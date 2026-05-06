@@ -2,7 +2,7 @@ match:
   id: local_chess_test_001
   output_dir: runs/local_chess_test_001
   max_plies: 300
-  auto_start: true
+  auto_start: false
 
 server:
   port: 3000

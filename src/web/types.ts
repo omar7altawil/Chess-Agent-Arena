@@ -1,4 +1,7 @@
 import type {
+  AgentActivity,
+  AgentModelCallRecord,
+  AgentToolCallRecord,
   GameSnapshot,
   MatchConfig,
   OpenRouterKeyStatus,
@@ -10,6 +13,9 @@ import type {
 } from "../shared/types";
 
 export type {
+  AgentActivity,
+  AgentModelCallRecord,
+  AgentToolCallRecord,
   GameSnapshot,
   MatchConfig,
   OpenRouterKeyStatus,
@@ -20,7 +26,7 @@ export type {
   ResultsSummary
 };
 
-export type ViewName = "game" | "results";
+export type ViewName = "setup" | "game" | "results";
 
 export interface PendingPromotion {
   from: string;

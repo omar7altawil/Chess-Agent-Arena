@@ -11,18 +11,27 @@ import {
   Pause,
   Play,
   RefreshCw,
-  RotateCcw,
+  Settings2,
   Swords
 } from "lucide-react";
 import { AgentActivityPanel } from "./components/AgentActivityPanel";
 import { ChessBoard } from "./components/ChessBoard";
 import { ConfigPanel } from "./components/ConfigPanel";
 import { GameOverModal } from "./components/GameOverModal";
+import { MatchSetup } from "./components/MatchSetup";
 import { MoveList } from "./components/MoveList";
 import { ReplayControls } from "./components/ReplayControls";
 import { ResultsPage } from "./components/ResultsPage";
 import { SidePanel } from "./components/SidePanel";
-import { fetchGame, postNewGame, postPause, postResign, postResume, postStart } from "./api";
+import {
+  fetchGame,
+  postNewGame,
+  postPause,
+  postRematch,
+  postResign,
+  postResume,
+  postStart
+} from "./api";
 import type { GameSnapshot, MatchConfig, ViewName } from "./types";
 
 export function App() {
@@ -33,7 +42,14 @@ export function App() {
   const [replayPly, setReplayPly] = useState<number | null>(null);
 
   useEffect(() => {
-    fetchGame().then(setGame).catch((err: Error) => setError(err.message));
+    fetchGame()
+      .then((snapshot) => {
+        setGame(snapshot);
+        if (!snapshot.started && snapshot.history.length === 0) {
+          setView("setup");
+        }
+      })
+      .catch((err: Error) => setError(err.message));
     const events = new EventSource("/api/events");
     events.addEventListener("snapshot", (event) => {
       const snapshot = JSON.parse((event as MessageEvent).data) as GameSnapshot;
@@ -67,21 +83,30 @@ export function App() {
     setView("game");
   }, [handleAction]);
 
+  const handleRematch = useCallback((swap: boolean) => {
+    void handleAction(() => postRematch(swap));
+    setReplayPly(null);
+    setView("game");
+  }, [handleAction]);
+
   if (!game) {
-    return <div className="app-shell loading">Loading Chess Agent Arena...</div>;
+    return <div className="app-shell loading">Loading Chess Agent Arena…</div>;
   }
 
   return (
     <div className="app-shell">
       <header className="topbar">
-        <div>
+        <div className="brand-block">
           <div className="brand-line">
             <Swords size={21} />
             <h1>Chess Agent Arena</h1>
           </div>
-          <p>{game.players.white.name} vs {game.players.black.name}</p>
+          <MatchSummary game={game} />
         </div>
         <nav className="view-tabs" aria-label="Main views">
+          <button className={view === "setup" ? "active" : ""} onClick={() => setView("setup")}>
+            <Settings2 size={16} /> Setup
+          </button>
           <button className={view === "game" ? "active" : ""} onClick={() => setView("game")}>
             <BrainCircuit size={16} /> Game
           </button>
@@ -97,9 +122,21 @@ export function App() {
         </div>
       )}
 
-      {view === "results" ? (
-        <ResultsPage />
-      ) : (
+      {view === "results" && <ResultsPage />}
+
+      {view === "setup" && (
+        <main className="setup-layout">
+          <MatchSetup
+            game={game}
+            variant="primary"
+            onStart={handleNewConfig}
+            onCancel={() => setView("game")}
+            onError={setError}
+          />
+        </main>
+      )}
+
+      {view === "game" && (
         <main className="game-layout">
           <section className="board-section">
             <div className="board-header">
@@ -139,7 +176,7 @@ export function App() {
               <button onClick={() => setReplayPly(null)}>
                 <RefreshCw size={16} /> Live
               </button>
-              <button onClick={() => void handleAction(() => postResign(game.turn))}>
+              <button onClick={() => void handleAction(() => postResign(game.turn))} disabled={game.status === "completed"}>
                 <Flag size={16} /> Resign
               </button>
             </div>
@@ -154,13 +191,57 @@ export function App() {
               onLive={() => setReplayPly(null)}
             />
             <ExportPanel game={game} />
-            <ConfigPanel game={game} onNewGame={handleNewConfig} />
+            <ConfigPanel
+              game={game}
+              onOpenSetup={() => setView("setup")}
+              onRematch={() => handleRematch(false)}
+              onSwapRematch={() => handleRematch(true)}
+            />
           </aside>
         </main>
       )}
 
-      {game.status === "completed" && <GameOverModal game={game} onClose={() => setReplayPly(game.history.length)} />}
+      {view === "game" && game.status === "completed" && (
+        <GameOverModal
+          game={game}
+          onClose={() => setReplayPly(game.history.length)}
+          onRematch={() => handleRematch(false)}
+          onSwapRematch={() => handleRematch(true)}
+          onNewMatch={() => setView("setup")}
+        />
+      )}
     </div>
+  );
+}
+
+function MatchSummary({ game }: { game: GameSnapshot }) {
+  const statusLabel = game.status === "completed"
+    ? `${game.result} · ${game.endReason ?? "complete"}`
+    : game.paused
+      ? "Paused"
+      : game.started
+        ? `${game.turn} to move · ply ${game.ply}`
+        : "Ready to start";
+  return (
+    <div className="match-summary">
+      <PlayerChip game={game} color="white" />
+      <span className="vs">vs</span>
+      <PlayerChip game={game} color="black" />
+      <span className="match-status">{statusLabel}</span>
+    </div>
+  );
+}
+
+function PlayerChip({ game, color }: { game: GameSnapshot; color: "white" | "black" }) {
+  const player = game.players[color];
+  const active = game.turn === color && game.status !== "completed" && game.started;
+  return (
+    <span className={`player-chip ${color} ${active ? "active" : ""}`}>
+      <span className={`color-dot ${color}`} />
+      <strong>{player.name}</strong>
+      {player.model && <span className="chip-tag">{player.model}</span>}
+      {player.bot && <span className="chip-tag">{player.bot}</span>}
+    </span>
   );
 }
 
@@ -201,3 +282,4 @@ function ExportPanel({ game }: { game: GameSnapshot }) {
     </section>
   );
 }
+

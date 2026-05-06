@@ -8,17 +8,17 @@ The app runs a browser chessboard backed by an authoritative `chess.js` rules en
 
 ```bash
 npm install
-cp .env.example .env
-npm run dev
+npx tsx src/cli/index.ts init   # creates .env and runs/ if missing
+npm run dev                     # opens the Setup view in your browser
 ```
 
 Open `http://localhost:3000`.
 
-The default config is Human vs OpenRouter Agent. Add an OpenRouter key in the browser before expecting the model side to move.
+You land on **Match Setup**: pick Human or LLM for each side, pick a model for any LLM side, paste your OpenRouter key in the OpenRouter card, then **Start Match**.
 
 ## OpenRouter Setup
 
-You can paste the key directly in the browser from **Configure Match → OpenRouter**. The key is saved to `.chess-agent-arena.secrets.json`, which is gitignored, and is reloaded on the next server start. The raw key is not written to run logs.
+The Setup view's OpenRouter card is the easiest way: paste the key, click Save. The key is saved to `.chess-agent-arena.secrets.json` (gitignored) and reloaded on the next server start. Use the Clear button to remove it. Raw keys are never written to run logs.
 
 You can also add an API key to `.env`:
 

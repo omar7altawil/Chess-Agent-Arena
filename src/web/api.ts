@@ -44,6 +44,19 @@ export async function postNewGame(config: MatchConfig): Promise<GameSnapshot> {
   });
 }
 
+export async function postRematch(swapColors = false): Promise<GameSnapshot> {
+  return request<GameSnapshot>("/api/game/rematch", {
+    method: "POST",
+    body: JSON.stringify({ swapColors })
+  });
+}
+
+export async function deleteOpenRouterKey(): Promise<OpenRouterKeyStatus> {
+  return request<OpenRouterKeyStatus>("/api/openrouter/key", {
+    method: "DELETE"
+  });
+}
+
 export async function fetchResults(): Promise<ResultsSummary[]> {
   return request<ResultsSummary[]>("/api/results");
 }

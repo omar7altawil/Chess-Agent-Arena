@@ -5,10 +5,10 @@ import path from "node:path";
 import { readFile } from "node:fs/promises";
 import type { MatchConfig } from "../shared/types.js";
 import { hydrateAgents, validateMatchConfigObject } from "../config/loadConfig.js";
-import { createMatchConfigFromPlayers } from "../config/defaults.js";
+import { createMatchConfigFromPlayers, readableRunId } from "../config/defaults.js";
 import { listResults } from "../logging/eventLogger.js";
 import { MatchRunner } from "../runtime/matchRunner.js";
-import { getOpenRouterKeyStatus, loadLocalSecrets, saveOpenRouterKey } from "../config/secrets.js";
+import { clearOpenRouterKey, getOpenRouterKeyStatus, loadLocalSecrets, saveOpenRouterKey } from "../config/secrets.js";
 
 export interface LocalServer {
   runner: MatchRunner;
@@ -131,6 +131,28 @@ export async function startLocalServer(initialConfig: MatchConfig, port = 3000):
     }
   });
 
+  app.post("/api/game/rematch", async (req, res, next) => {
+    try {
+      const swapColors = Boolean(req.body?.swapColors);
+      const previousConfig = runner.getSnapshot().config;
+      const next = JSON.parse(JSON.stringify(previousConfig)) as MatchConfig;
+      if (swapColors) {
+        const { white, black } = next.players;
+        next.players = { white: black, black: white };
+      }
+      next.match.id = readableRunId(next.players.white, next.players.black);
+      next.match.output_dir = `runs/${next.match.id}`;
+      next.match.auto_start = true;
+      const nextRunner = new MatchRunner(next);
+      await nextRunner.init();
+      attachRunner(nextRunner);
+      await runner.start();
+      res.json(runner.getSnapshot());
+    } catch (error) {
+      next(error);
+    }
+  });
+
   app.get("/api/results", async (_req, res, next) => {
     try {
       res.json(await listResults());
@@ -168,6 +190,16 @@ export async function startLocalServer(initialConfig: MatchConfig, port = 3000):
     try {
       await saveOpenRouterKey(apiKey);
       console.log("[openrouter] API key saved to local secrets file (redacted).");
+      res.json(getOpenRouterKeyStatus());
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.delete("/api/openrouter/key", async (_req, res, next) => {
+    try {
+      await clearOpenRouterKey();
+      console.log("[openrouter] API key cleared.");
       res.json(getOpenRouterKeyStatus());
     } catch (error) {
       next(error);

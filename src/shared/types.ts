@@ -216,13 +216,6 @@ export interface ResultsSummary {
   metricsPath?: string;
 }
 
-export interface PromptSummary {
-  name: string;
-  path: string;
-  preview: string;
-  bytes: number;
-}
-
 export interface OpenRouterModelSummary {
   id: string;
   name: string;

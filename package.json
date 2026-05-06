@@ -8,7 +8,6 @@
   },
   "scripts": {
     "dev": "tsx src/cli/index.ts dev --config configs/local.match.yaml",
-    "run": "tsx src/cli/index.ts run --config configs/bot-vs-bot.yaml",
     "validate": "tsx src/cli/index.ts validate --config configs/local.match.yaml",
     "init": "tsx src/cli/index.ts init",
     "build": "tsc -p tsconfig.node.json && vite build",

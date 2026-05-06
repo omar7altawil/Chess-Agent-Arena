@@ -54,11 +54,29 @@ program
 
 program
   .command("init")
-  .description("Generate example local files.")
+  .description("Generate local files (.env, runs/) so the app is ready to start.")
   .action(async () => {
+    const fs = await import("node:fs/promises");
     await mkdir("runs", { recursive: true });
-    await writeFile(".env.local.example", "OPENROUTER_API_KEY=\nOPENROUTER_BASE_URL=https://openrouter.ai/api/v1\n", "utf8");
-    console.log("Example configs are already present in configs/, agents/, and prompts/.");
+    try {
+      await fs.access(".env");
+      console.log(".env already present, leaving it untouched.");
+    } catch {
+      try {
+        const example = await fs.readFile(".env.example", "utf8");
+        await writeFile(".env", example, "utf8");
+        console.log("Wrote .env from .env.example. Open it and add OPENROUTER_API_KEY to use LLM agents.");
+      } catch {
+        await writeFile(
+          ".env",
+          "OPENROUTER_API_KEY=\nOPENROUTER_BASE_URL=https://openrouter.ai/api/v1\n",
+          "utf8"
+        );
+        console.log("Wrote a minimal .env. Add OPENROUTER_API_KEY to use LLM agents.");
+      }
+    }
+    console.log("Example configs live in configs/, agents/, and prompts/.");
+    console.log("Run 'npm run match' to start the app on the Setup view, or 'npm run dev' for a quick Human-vs-Bot game.");
   });
 
 program
