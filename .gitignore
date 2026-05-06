@@ -1,0 +1,9 @@
+node_modules/
+dist/
+dist-web/
+runs/
+.env
+.chess-agent-arena.secrets.json
+playwright-report/
+test-results/
+*.tsbuildinfo

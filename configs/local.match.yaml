@@ -1,0 +1,39 @@
+match:
+  id: local_chess_test_001
+  output_dir: runs/local_chess_test_001
+  max_plies: 300
+  auto_start: true
+
+server:
+  port: 3000
+
+ui:
+  board_theme: classic
+  piece_set: standard
+  animation_ms: 180
+  show_legal_moves: true
+  show_last_move: true
+  show_coordinates: true
+  enable_sound: false
+
+chess:
+  starting_position: standard
+  starting_fen: null
+  rules:
+    threefold_repetition: true
+    fifty_move_rule: true
+    insufficient_material: true
+  clocks:
+    enabled: false
+    initial_seconds: 600
+    increment_seconds: 2
+
+players:
+  white:
+    type: human
+    name: Human Player
+
+  black:
+    type: llm
+    name: OpenRouter Agent
+    agent_config: agents/openrouter_chess_agent.yaml

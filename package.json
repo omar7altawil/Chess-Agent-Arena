@@ -1,0 +1,42 @@
+{
+  "name": "chess-agent-arena",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "chess-agent-arena": "./dist/cli/index.js"
+  },
+  "scripts": {
+    "dev": "tsx src/cli/index.ts dev --config configs/local.match.yaml",
+    "run": "tsx src/cli/index.ts run --config configs/bot-vs-bot.yaml",
+    "validate": "tsx src/cli/index.ts validate --config configs/local.match.yaml",
+    "init": "tsx src/cli/index.ts init",
+    "build": "tsc -p tsconfig.node.json && vite build",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.node.json --noEmit && tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "^5.0.0",
+    "chess.js": "^1.4.0",
+    "commander": "^14.0.0",
+    "dotenv": "^17.2.0",
+    "express": "^5.1.0",
+    "lucide-react": "^0.468.0",
+    "react": "^19.1.0",
+    "react-chessboard": "^5.1.0",
+    "react-dom": "^19.1.0",
+    "yaml": "^2.6.1",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.54.0",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.1",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vite": "^7.0.0",
+    "vitest": "^3.0.0"
+  }
+}

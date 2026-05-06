@@ -1,0 +1,37 @@
+id: openrouter_chess_agent
+name: OpenRouter Chess Agent
+type: llm
+
+model:
+  provider: openrouter
+  model_name: openai/gpt-4o-mini
+  base_url: ${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
+  api_key_env: OPENROUTER_API_KEY
+  temperature: 0.2
+  max_output_tokens: 900
+  timeout_seconds: 60
+  tool_mode: native
+
+prompt:
+  system_prompt_file: prompts/cautious_chess_agent.md
+
+behavior:
+  tool_tier: tier_1
+  max_tool_calls_per_turn: 5
+  max_invalid_actions_per_turn: 2
+  require_make_move: true
+  allow_resign: true
+  allow_draw_offer: true
+
+memory:
+  mode: external_summary
+  max_summary_chars: 3000
+
+tools:
+  - get_board_state
+  - get_legal_moves
+  - get_move_history
+  - get_game_status
+  - make_move
+  - resign
+  - offer_draw
