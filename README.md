@@ -1,142 +1,275 @@
 # Chess Agent Arena
 
-Local-first chess arena for humans, bots, and configurable LLM agents.
+**A local-first chess arena for testing LLM models in real chess matches.**
 
-The app runs a browser chessboard backed by an authoritative `chess.js` rules engine. Humans can play locally, bots can play automatically, and LLM agents can play only through structured chess tools. OpenRouter is the default hosted provider path because it exposes many models through an OpenAI-compatible API.
+Chess Agent Arena lets you run **Human vs Model** and **Model vs Model** chess matches from your browser. It uses OpenRouter for broad model access, keeps chess rules authoritative with `chess.js`, saves results locally, and gives you a clean place to compare model legality, latency, failures, and outcomes.
+
+![Chess Agent Arena game screen](docs/assets/chess-agent-arena-game.png)
+
+## Why It Exists
+
+LLMs can sound confident while losing track of structured state. Chess makes that failure mode obvious: every move is either legal or illegal, every position can be replayed, and every model faces the same board.
+
+This project is built for:
+
+- Comparing OpenRouter models on the same chess positions.
+- Playing against an LLM from a normal browser chess board.
+- Watching two models play each other live.
+- Tracking completed games separately from provider errors and incomplete runs.
+- Keeping all keys, logs, PGN files, FEN snapshots, and metrics on your machine.
+
+It is not a hosted chess server, public leaderboard, or account-based SaaS.
+
+## Features
+
+- **Browser match setup** for Human vs Model and Model vs Model.
+- **OpenRouter model picker** with free-model filtering, search, manual model IDs, and model test requests.
+- **Local key storage** through `.chess-agent-arena.secrets.json` or `.env`.
+- **Legal move highlighting** when you select a piece on the board.
+- **Authoritative chess validation** through `chess.js`; models never own board state.
+- **Live match view** with turn, move count, captured pieces, move history, model activity, and replay controls.
+- **PGN and FEN export** from the browser.
+- **Results dashboard** for completed games, failed runs, model matchups, usage, and saved artifacts.
+- **Local run folders** with PGN, replay JSON, metrics JSON, event logs, and model-call logs.
+- **Redacted secrets** in backend errors and logs.
 
 ## Quickstart
 
+Requirements:
+
+- Node.js 22+
+- npm
+- An OpenRouter API key for model matches
+
 ```bash
+git clone <repo-url>
+cd chess-agent-arena
 npm install
-npx tsx src/cli/index.ts init   # creates .env and runs/ if missing
-npm run dev                     # opens the Setup view in your browser
+npm run dev
 ```
 
-Open `http://localhost:3000`.
+Open:
 
-You land on **Match Setup**: pick Human or LLM for each side, pick a model for any LLM side, paste your OpenRouter key in the OpenRouter card, then **Start Match**.
+```text
+http://localhost:3000
+```
+
+In the app:
+
+1. Open **Configure Match**.
+2. Paste your OpenRouter key and click **Save**.
+3. Click **Test model** for the selected model.
+4. Choose **Human vs Model** or **Model vs Model**.
+5. Pick models from the list or enter a manual OpenRouter model ID.
+6. Start the match.
+
+The browser setup is the intended path for normal use. You do not need to edit YAML files just to play or compare models.
 
 ## OpenRouter Setup
 
-The Setup view's OpenRouter card is the easiest way: paste the key, click Save. The key is saved to `.chess-agent-arena.secrets.json` (gitignored) and reloaded on the next server start. Use the Clear button to remove it. Raw keys are never written to run logs.
+The app can save your key locally:
 
-You can also add an API key to `.env`:
+```text
+.chess-agent-arena.secrets.json
+```
+
+That file is ignored by git. You can clear the key from the browser setup panel.
+
+You can also use `.env`:
 
 ```bash
-OPENROUTER_API_KEY=...
+OPENROUTER_API_KEY=<your-openrouter-key>
 OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
 ```
 
-Then run:
+The OpenRouter panel supports:
 
-```bash
-npx tsx src/cli/index.ts dev --config configs/human-vs-agent.yaml
-```
+- Saving and clearing the local key.
+- Refreshing the available model list.
+- Showing free models first.
+- Searching models.
+- Selecting a listed model.
+- Entering a manual model ID.
+- Sending a test request before starting a match.
 
-Agent files live in `agents/`, and prompts live in `prompts/`. The default OpenRouter agent uses:
+Free OpenRouter models may be rate-limited by their upstream providers. When that happens, the backend logs the provider status and the Results page marks the run as an issue instead of treating it like a completed chess result.
 
-```yaml
-model:
-  provider: openrouter
-  model_name: openai/gpt-4o-mini
-  base_url: ${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
-  api_key_env: OPENROUTER_API_KEY
-  tool_mode: native
-```
-
-From the browser you can refresh OpenRouter’s model list, prefer free models, search models, select a model for either side, or type a model id manually. The model list is loaded from OpenRouter’s Models API and includes free/tool-support tags.
-
-Use **Test model** in the OpenRouter setup panel before starting an LLM match. The backend terminal also prints `[openrouter]`, `[model]`, `[agent]`, `[tool]`, and `[move]` logs so provider failures and tool-call behavior are visible.
-
-Change `model_name` in YAML to any OpenRouter model that supports the behavior you want to test. If native tool calling is unreliable for a model, set `tool_mode: json`.
-
-## Commands
+## Running The App
 
 ```bash
 npm run dev
+```
+
+If port `3000` is already in use:
+
+```bash
+npx tsx src/cli/index.ts dev --config configs/local.match.yaml --port 3001
+```
+
+Then open:
+
+```text
+http://localhost:3001
+```
+
+Useful checks:
+
+```bash
 npm run validate
+npm test
+npm run typecheck
+npm run build
+```
+
+Export a saved game's PGN:
+
+```bash
+npx tsx src/cli/index.ts export-pgn runs/<match_id>
+```
+
+## What You Can Test
+
+### Human vs Model
+
+Play against an LLM model and inspect how it behaves move by move.
+
+Useful questions:
+
+- Does the model make legal moves under tactical pressure?
+- Does it recover cleanly after a rejected move attempt?
+- How long does it take per move?
+- Are its short public explanations useful?
+
+### Model vs Model
+
+Run two models against each other with the same starting position.
+
+Useful questions:
+
+- Which model completes more games without invalid move attempts?
+- Which model has lower latency?
+- How often does a model lose because of provider errors or malformed output?
+- Which prompts produce cleaner, more stable play?
+
+## Safe Move Validation
+
+The core rule is simple:
+
+**Models suggest moves. The chess engine decides whether those moves are legal.**
+
+The runtime gives the active model the current game context, asks it for a move, validates the move with `chess.js`, then updates the board only after validation passes. Invalid move attempts are logged, surfaced in the UI, and can end a run if the model repeatedly fails.
+
+This keeps model evaluation honest: a model cannot invent board state, move the wrong color, skip a turn, or bypass chess rules.
+
+## Results And Artifacts
+
+Every match writes a local run folder:
+
+```text
+runs/<match_id>/
+```
+
+Typical files:
+
+- `config.resolved.yaml`
+- `events.jsonl`
+- `model_calls.jsonl`
+- `game.pgn`
+- `final.fen`
+- `replay.json`
+- `summary.md`
+- `metrics.json`
+
+The Results page is built for model evaluation:
+
+- Completed games show final chess scores.
+- Failed runs show the provider/runtime issue instead of a fake score.
+- Incomplete runs are not scored as final games.
+- Model matchups are grouped so you can compare outcomes across runs.
+- PGN, replay, and metrics are available from saved artifacts.
+
+## Project Structure
+
+```text
+src/
+  chess/       chess.js wrapper and legal move enforcement
+  runtime/     match runner and model-turn lifecycle
+  model/       OpenRouter/OpenAI-compatible client
+  logging/     events, metrics, PGN, replay, summaries
+  server/      Express + Vite local server
+  web/         React chess UI and results dashboard
+  tests/       engine, runtime, provider, and UI behavior tests
+```
+
+Configs, model profiles, and prompts live in:
+
+```text
+configs/
+agents/
+prompts/
+```
+
+Most users can configure matches from the browser. The files are there for repeatable experiments and development.
+
+## Privacy And Safety
+
+- API keys are not committed by default.
+- `.env` is ignored.
+- `.chess-agent-arena.secrets.json` is ignored.
+- Raw keys are redacted from provider error messages.
+- Run logs contain model IDs, move attempts, usage, latency, and errors, but not raw API keys.
+
+Before publishing your fork:
+
+```bash
+git status --short --ignored=matching
+rg -n "sk-or-v1-[[:alnum:]]+" -g "!node_modules" -g "!dist" -g "!dist-web" -g "!runs" .
+```
+
+If a real key was ever pasted into chat, an issue, or a commit, rotate it.
+
+## Current Status
+
+The MVP currently supports:
+
+- Browser match setup
+- Human vs Model
+- Model vs Model
+- OpenRouter key save/test flow
+- Free model filtering and manual model IDs
+- Legal move highlighting
+- Legal chess enforcement
+- Live board updates
+- PGN/FEN export
+- Local run artifacts
+- Model-focused Results page
+
+Known limitations:
+
+- No public multiplayer.
+- No accounts.
+- No cloud sync.
+- No built-in Stockfish analysis yet.
+- Free OpenRouter models may be rate-limited upstream.
+
+## Roadmap
+
+- Better model retry policies and fallback chains.
+- Saved experiment presets.
+- Replay viewer improvements from the Results page.
+- Aggregate model comparison stats.
+- Optional post-game Stockfish analysis.
+- Prompt comparison reports.
+- Shareable static replay export.
+
+## Development
+
+Run checks before opening a PR:
+
+```bash
+npm run typecheck
 npm test
 npm run build
 ```
 
-Direct CLI examples:
-
-```bash
-npx tsx src/cli/index.ts dev --config configs/local.match.yaml
-npx tsx src/cli/index.ts run --config configs/agent-vs-agent.yaml
-npx tsx src/cli/index.ts validate --config configs/human-vs-agent.yaml
-npx tsx src/cli/index.ts export-pgn runs/local_chess_test_001
-```
-
-## What Works
-
-- Human vs Model and Model vs Model match setup in the browser. Bot players remain available for smoke tests and internal baselines through config files.
-- Drag-and-drop and click-to-move board input.
-- Clear selected-piece legal move highlighting, last move highlighting, check highlighting, board flip, promotion picker, move history, replay controls, PGN/FEN export, and results page.
-- Random and heuristic bot players.
-- LLM tools: `get_board_state`, `get_legal_moves`, `inspect_square`, `get_move_history`, `get_game_status`, `make_move`, `resign`, `offer_draw`, and `respond_to_draw_offer`.
-- OpenAI-compatible chat completions with native tool calls or strict JSON action fallback.
-- Run outputs in `runs/<match_id>/`: `config.resolved.yaml`, `events.jsonl`, `model_calls.jsonl`, `game.pgn`, `final.fen`, `replay.json`, `summary.md`, and `metrics.json`.
-
-## Configuration
-
-Match files live in `configs/`.
-
-```yaml
-players:
-  white:
-    type: human
-    name: Human Player
-
-  black:
-    type: llm
-    name: OpenRouter Chess Agent
-    agent_config: agents/openrouter_chess_agent.yaml
-```
-
-Bot players are supported by config for cheap local smoke tests, but they are not the main browser workflow:
-
-```yaml
-type: bot
-bot: heuristic
-```
-
-Supported bots are `random` and `heuristic`.
-
-## Tool Tiers
-
-Agents list their enabled tools explicitly. The default agent uses tier 1:
-
-```yaml
-tools:
-  - get_board_state
-  - get_legal_moves
-  - get_move_history
-  - get_game_status
-  - make_move
-  - resign
-  - offer_draw
-```
-
-Disabled tools are rejected at runtime. Engine assistance tools are intentionally not enabled in this MVP.
-
-## Local Models
-
-Use any OpenAI-compatible local endpoint by changing the agent config:
-
-```yaml
-model:
-  provider: openai_compatible
-  model_name: local-model-name
-  base_url: ${LOCAL_OPENAI_BASE_URL}
-  api_key_env: OPENAI_API_KEY
-  tool_mode: json
-```
-
-For local servers that do not require a real key, set a placeholder value in `.env`.
-
-## Notes
-
-- API keys are loaded from environment variables and are not written into run logs.
-- The chess engine owns all rules and state. Agents can only observe and act through validated tools.
-- Stockfish analysis is not implemented yet; the app works without Stockfish.
+Chess Agent Arena is intentionally local-first and small enough to hack on. Contributions that improve model reliability, experiment reporting, replay UX, or provider support are welcome.
